@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 from Mahjong import Meld
 from Mahjong import Mahjong
+import copy
 class Group(object):
     #各种组合方法#############################################################################
     def totalToResult_jiang(self,color,number):        #对子
@@ -11,7 +12,7 @@ class Group(object):
         meld=Meld(temp)
         self.result.append(meld)
         self.total[color][number]-=2
-        self.handtiles=self.totalToTiles(self.total)
+        self.handtiles=totalToTiles(self.total)
     def resultToTotal_jiang(self,index):
         meld=self.result[index]
         assert meld.__str__()=='将'
@@ -19,7 +20,7 @@ class Group(object):
         number=meld.tiles[0].number
         self.total[color][number]+=2;
         self.result.pop(index)
-        self.handtiles=self.totalToTiles(self.total)
+        self.handtiles=totalToTiles(self.total)
     def totalToResult_ke(self,color,number):           #刻
         assert self.total[color][number] >= 3
         temp = []
@@ -29,7 +30,7 @@ class Group(object):
         meld = Meld(temp)
         self.result.append(meld)
         self.total[color][number]-=3
-        self.handtiles = self.totalToTiles(self.total)
+        self.handtiles = totalToTiles(self.total)
     def resultToTotal_ke(self,index):
         meld = self.result[index]
         assert meld.__str__() == '碰'
@@ -37,7 +38,7 @@ class Group(object):
         number = meld.tiles[0].number
         self.total[color][number] += 3;
         self.result.pop(index)
-        self.handtiles = self.totalToTiles(self.total)
+        self.handtiles = totalToTiles(self.total)
     def totalToResult_shun(self,color,number):      #顺子
         assert number<=7
         assert self.total[color][number]>=1
@@ -52,7 +53,7 @@ class Group(object):
         self.total[color][number]-=1
         self.total[color][number+1] -= 1
         self.total[color][number+2] -= 1
-        self.handtiles = self.totalToTiles(self.total)
+        self.handtiles = totalToTiles(self.total)
     def resultToTotal_shun(self,index):
         meld =self.result[index]
         assert meld.__str__()=='吃'
@@ -62,7 +63,7 @@ class Group(object):
         self.total[color][number+1] += 1
         self.total[color][number+2] += 1
         self.result.pop(index)
-        self.handtiles = self.totalToTiles(self.total)
+        self.handtiles = totalToTiles(self.total)
     def resultToTotal(self,index):
         meld=self.result[index]
         if meld.__str__()=="吃":
@@ -77,22 +78,7 @@ class Group(object):
 
 
     #牌组与表之间的转换#############################################################################
-    def tilesToTotal(self,tiles):          #牌组转换至统计表
-        total={1:[0,0,0,0,0,0,0,0,0,0],2:[0,0,0,0,0,0,0,0,0,0],3:[0,0,0,0,0,0,0,0,0,0],4:[0,0,0,0],5:[0,0,0,0,0]}
-        for tile in tiles:
-            total[tile.color][tile.number]+=1
-        for i in range(1,6):
-            total[i][0]=sum(total[i][1:])
-        return total
-    def totalToTiles(self,total):          #统计表转换成牌组
-        tiles=[]
-        for i in range(1,6):
-            t=0
-            for j in total[i][1:]:
-                t+=1
-                for k in range(j):
-                    tiles.append(Mahjong(i,t))
-        return tiles
+
     #牌组与表之间的转换#############################################################################
 
 
@@ -111,8 +97,10 @@ class Group(object):
         for meld in self.melds:
             for tile in meld.tiles:
                 self.allTiles.append(tile)
-        self.total=self.tilesToTotal(handtiles)     #统计
-        self.allTotal=self.tilesToTotal(self.allTiles)
+        for meld in melds:
+            meld.ismine=False
+        self.total=tilesToTotal(handtiles)     #统计
+        self.allTotal=tilesToTotal(self.allTiles)
         assert len(self.melds)*3+len(handtiles)==14 #判断先决条件
     def sort(self, tiles):
         for i in range(len(tiles) - 1):
@@ -143,11 +131,11 @@ class Group(object):
 
     def analyse(self):                              #分析剩下的3n张牌是否满足胡牌条件
         if len(self.handtiles)==0:
-            copy={"Own":[],"Attach":[]}
+            copy=[]
             for meld in self.result:
-                copy["Own"].append(meld)
+                copy.append(meld)
             for meld in self.melds:
-                copy["Attach"].append(meld)
+                copy.append(meld)
             self.allResult.append(copy)
             self.back()
             return
@@ -185,6 +173,16 @@ def tilesToTotal(tiles):  # 牌组转换至统计表
     return total
 
 
+def totalToTiles(total):  # 统计表转换成牌组
+    tiles = []
+    for i in range(1, 6):
+        t = 0
+        for j in total[i][1:]:
+            t += 1
+            for k in range(j):
+                tiles.append(Mahjong(i, t))
+    return tiles
+
 
 def ting(tiles,melds=[]):
     ting_tiles=[]
@@ -201,15 +199,13 @@ def ting(tiles,melds=[]):
     for color in range(1,6):
         for number in range(1,tile_num[color]+1):
             if allTotal[color][number]<=4:
-                tiles.append(Mahjong(color,number))
-                group=Group(tiles,melds)
+                t=copy.copy(tiles)
+                t.append(Mahjong(color,number))
+                m=copy.copy(melds)
+                group=Group(t,m)
                 group.judge()
                 if len(group.allResult)>0:
                     ting_tiles.append(Mahjong(color,number))
-                for i in range(len(tiles)):
-                    if (tiles[i].color==color and tiles[i].number==number):
-                        tiles.pop(i)
-                        break
     return ting_tiles
 if(__name__=='__main__'):
     tiles=[]
@@ -226,31 +222,32 @@ if(__name__=='__main__'):
     tiles.append(Mahjong(1,9))
     tiles.append(Mahjong(1, 9))
     tiles.append(Mahjong(1,9))
+    tiles.append(Mahjong(1, 9))
     # meld=[]
     # meld.append(Mahjong(4,1))
     # meld.append(Mahjong(4, 1))
     # meld.append(Mahjong(4, 1))
     # meld.append(Mahjong(4, 1))
     # meld=Meld(meld)
-    hehe=ting(tiles)
-    for tile in hehe:
+    # hehe=ting(tiles)
+    # for tile in hehe:
+    #     print tile,
+    group=Group(tiles)
+    group.judge()
+    for tile in group.handtiles:
         print tile,
-    # group=Group(tiles,[meld])
-    # group.judge()
-    # for tile in group.handtiles:
-    #     print tile,
-    # if len(group.melds)>0:
-    #     for meld in group.melds:
-    #         print meld.detail(),
-    # print
-    # for result in group.allResult:
-    #     for kind in result:
-    #         for meld in result[kind]:
-    #             print kind,meld.detail()
-    # for tile in group.allTiles:
-    #     print tile,
-    # print
-    # for color in range(1,6):
-    #     for number in group.allTotal[color]:
-    #         print number,
-    #     print
+    if len(group.melds)>0:
+        for meld in group.melds:
+            print meld.detail(),
+    print
+    for result in group.allResult:
+        for kind in result:
+            for meld in result[kind]:
+                print kind,meld.detail()
+    for tile in group.allTiles:
+        print tile,
+    print
+    for color in range(1,6):
+        for number in group.allTotal[color]:
+            print number,
+        print

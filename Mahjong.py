@@ -29,7 +29,8 @@ class Mahjong(object):
         if (self.number>that.number): return 1
         return 0
 class Meld(object):
-    def __init__(self,tiles):
+    def __init__(self,tiles,ismine=True):
+        self.ismine=ismine
         self.tiles=tiles
         self.sort(self.tiles)
         assert self.judge()!=0
